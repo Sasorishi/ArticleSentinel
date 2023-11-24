@@ -1,5 +1,6 @@
 import ScraperController
 import sys
+from datetime import datetime
 
 def main():
     print('[Init] Article Sentinel')
@@ -20,7 +21,14 @@ def main():
     excluded_condition_choice = input("Veuillez choisir 'any' ou 'all' pour la condition des mots-clés exclus : ")
     
     visited_urls = set()  # Pour garder une trace des URLs visitées
-    result_file = 'results.txt'
+
+    current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+    condition_suffix_specific = f"_{specific_condition_choice}" if specific_condition_choice else ""
+    condition_suffix_excluded = f"_{excluded_condition_choice}" if excluded_condition_choice else ""
+
+    result_file = f"{current_datetime}_results{condition_suffix_specific}{condition_suffix_excluded}.txt"
+
     ScraperController.scrape_page(url, visited_urls, keywords, specific_keywords=specific_keywords, excluded_keywords=excluded_keywords, result_file=result_file, specific_condition_choice=specific_condition_choice, excluded_condition_choice=excluded_condition_choice)
 
 if __name__ == "__main__":

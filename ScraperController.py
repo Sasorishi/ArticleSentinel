@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 import time
 from tqdm import tqdm
+import tldextract
 
 def initialize(url):
     try:
@@ -33,6 +34,18 @@ def find_keywords(keywords, page):
 def write_to_file(file_path, content):
     with open(file_path, 'a') as file:
         file.write(content + '\n')
+
+def save_visited_links_to_file(visited_urls, file_path):
+    with open(file_path, 'a') as file:
+        for link in visited_urls:
+            file.write(link + '\n')
+
+def load_visited_links_from_file(file_path):
+    try:
+        with open(file_path, 'r') as file:
+            return set(line.strip() for line in file.readlines())
+    except FileNotFoundError:
+        return set()
 
 def same_domain(url1, url2):
     # print('same_domain')
@@ -73,16 +86,18 @@ def scrape_page(url, visited_urls, keywords, start_time=None, specific_keywords=
     if url in visited_urls:
         return
 
+    domain = tldextract.extract(url).domain
     visited_urls.add(url)
 
     if start_time is None:
-        print(f"Starting page {url}.")
+        # print(f"Starting page {url}.")
         start_time = time.time()
 
     links = collect_links(url, visited_urls, specific_keywords, excluded_keywords, specific_condition_choice, excluded_condition_choice)
 
-    for link in tqdm(links, desc=f"Scrapping {url}", unit=" link"):
-        if link.endswith(('.css', '.png', '.jpg', '.jpeg', '.gif', '.pdf')):
+    # for link in tqdm(links, desc=f"Scrapping {url}", unit=" link"):
+    for link in links:
+        if link.endswith(('.css', '.png', '.jpg', '.jpeg', '.gif', '.pdf', '.json', '.mp4', '.mp3', '.webp')):
             continue  # Ignore .css, .png, etc. links
 
         try:
@@ -97,16 +112,18 @@ def scrape_page(url, visited_urls, keywords, start_time=None, specific_keywords=
             if found_keywords:
                 elapsed_time = time.time() - start_time
                 message = f"{link} - Keywords found: {', '.join(found_keywords)} - in {elapsed_time:.2f} seconds"
+                print(message)
 
                 if result_file:
                     # Write results to file
+                    backup_file = f"{domain}#_{result_file}"
                     write_to_file(result_file, message)
 
-            scrape_page(link, visited_urls, keywords, start_time, specific_keywords, excluded_keywords, specific_condition_choice, excluded_condition_choice)
+            scrape_page(link, visited_urls, keywords, start_time, specific_keywords, excluded_keywords, result_file, specific_condition_choice, excluded_condition_choice)
 
         except requests.exceptions.Timeout:
             print(f"Timeout on page {link}. Restarting the function.")
-            scrape_page(link, visited_urls, keywords, start_time, specific_keywords, excluded_keywords, specific_condition_choice, excluded_condition_choice)
+            scrape_page(link, visited_urls, keywords, start_time, specific_keywords, excluded_keywords, result_file, specific_condition_choice, excluded_condition_choice)
 
         except requests.exceptions.RequestException as e:
             print(f"Error during HTTP request: {e}")
@@ -114,3 +131,5 @@ def scrape_page(url, visited_urls, keywords, start_time=None, specific_keywords=
     if start_time is not None:
         elapsed_time = time.time() - start_time
         print(f"Finished page {url} in {elapsed_time:.2f} seconds.")
+
+    save_visited_links_to_file(visited_urls, f"{domain}_visited_links.txt")
